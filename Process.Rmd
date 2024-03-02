@@ -1,0 +1,200 @@
+---
+title: "Data processing"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 5
+    number_sections: true
+---
+
+# Data Processing
+In this section, we transform data by adding some new calculated columns, clean dirty data and prepare it for analysis.
+
+## Utility functions
+First we define a function used along the file to display sample of data calculated and another one to return the memory size of data frame.
+
+```{r sample display, warning=FALSE, results='hide', message=FALSE}
+# A function to display a sample of data
+sample <- function(df, columns, n) {
+  selected_df <- df %>%
+    select(all_of(columns))
+  
+  unique_combinations <- df %>%
+    distinct(across(all_of(columns)), .keep_all = TRUE)
+  
+  sampled_df <- unique_combinations %>%
+    slice_sample(n = n)
+  select(sampled_df, columns)
+}
+
+# A function to display memory size of data frame
+size <- function(df) {
+  size_in_bytes <- object.size(df)
+  size_in_mb <- size_in_bytes / 1048576
+  return(size_in_mb)
+}
+```
+
+## Times columns calculation
+We need to calculate some new columns about different time units
+
+```{r Modify local settings to english, echo=FALSE, warning=FALSE, results='hide', message=FALSE}
+# Set the United States as the regional parameter to use English names for months and days.
+Sys.setlocale("LC_TIME", "en_US.UTF-8")
+```
+
+### Calculate month
+Month of trips is calculated from start date.
+
+```{r Month calculation, warning=FALSE, message=FALSE}
+df$month <- month(df$started_at, label = TRUE)
+
+sample(df, all_of(c("started_at", "month")), 10)
+```
+
+### Calculate day of week
+Week day of trips is calculated from start date. We also define an order on values of day column.
+
+```{r day calculation, warning=FALSE, message=FALSE}
+df$day <- weekdays(df$started_at)
+
+# define an order on days
+df$day <- factor(df$day, levels = c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"))
+
+sample(df, all_of(c("started_at", "day")), 10)
+```
+
+### Calculate hour of trip start
+Hour column is calculated from start date.
+
+```{r Hour calculation, warning=FALSE, message=FALSE}
+df$hour <- hour(df$started_at)
+
+sample(df, all_of(c("started_at", "hour")), 10)
+```
+
+### Calculate date of trip start
+Date of trip is calculated from start date, the time part is ignored. This column is used to make daily analysis.
+
+```{r date calcualtion, warning=FALSE, message=FALSE}
+df$date <- date(df$started_at)
+
+sample(df, all_of(c("started_at", "date")), 10)
+```
+
+### Calculate season of trip
+Season of trip is calculated from month: Spring: "Mar", "Apr", "May"; Summer: "Jun", "Jul", "Aug"; Autumn: "Sep", "Oct", "Nov"; Winter: "Dec","Jan", "Feb";
+
+```{r season calculation, warning=FALSE, message=FALSE}
+df <- df %>%
+  mutate(
+    season = case_when(
+      month %in% c("Mar", "Apr", "May") ~ "spring",
+      month %in% c("Jun", "Jul", "Aug") ~ "summer",
+      month %in% c("Sep", "Oct", "Nov") ~ "autumn",
+      TRUE ~ "winter" # Décembre, janvier, février
+    )
+  )
+
+sample(df, all_of(c("month", "season")), 10)
+```
+
+### Calculate duration column
+We calculate duration of each trip.
+
+```{r duration column, warning=FALSE, results='hide', message=FALSE}
+df$duration <- difftime(df$ended_at, df$started_at, units = "mins")
+
+sample(df, all_of(c("started_at", "ended_at", "duration")), 10)
+```
+
+## Geographic columns calculation
+Here we calculate two new columns about distance of trips.
+
+### Calculate distance of trips
+Straight-line distance is calculated from start and end points coordinates, using Haversine formula.
+
+```{r distance column, warning=FALSE, message=FALSE}
+df$distance <- ifelse(
+  !is.na(df$start_lat) & !is.na(df$start_lng) & !is.na(df$end_lat) & !is.na(df$end_lng),
+  distHaversine(
+    cbind(df$start_lat, df$start_lng),
+    cbind(df$end_lat, df$end_lng)
+  )/1000,NA
+)
+sample(df, all_of(c("start_lat", "start_lng", "end_lat", "end_lng", "distance")), 10)
+```
+
+### Calculate distance category
+We calculate distance categories labeled: [0, 1km], ]1km, 3km], ]3km, 10km], ]10km, 50km] and "Not defined". Last category contains distance greater than 50km.
+
+```{r distance calculation, warning=FALSE, message=FALSE}
+# Categorize the trips based on distance
+df <- df %>%
+  mutate(dist_cat = case_when(
+    distance <= 1 ~ "0<d<1km",
+    distance > 1 & distance <= 3 ~ "1km<d<3km",
+    distance > 3 & distance <= 10 ~ "3km<d<10km",
+    distance > 10 & distance <= 50 ~ "10km<d<50km",
+    TRUE ~ "Abnormal distance" # For distances that don't fall into the specified ranges
+  ))
+# define an order on dist_cat values.
+df$dist_cat<- factor(df$dist_cat, levels = c("0<d<1km", "1km<d<3km", "3km<d<10km", "10km<d<50km", "Abnormal distance"))
+
+sample(df, all_of(c("distance", "dist_cat")), 10)
+```
+
+## Reorder columns and suppression
+Here we delete unused columns and reorder new calculated columns.
+
+### Delete rows with negative duration or distance \> 50km
+**Important observation:**  
+Transformations deleting or modifying data must be validated by the manager. 
+
+Impossible trips with negative duration ('ended_at < started_at') holds for 272 rows. There may have been a technical error stemming from the synchronization of the internal timekeeping mechanism.
+
+```{r negative duration supression}
+original_nrow <- nrow(df)
+df <- subset(df, duration >= 0)
+ignored_rows <- original_nrow - nrow(df)
+
+cat("Number of rows ignored, trips with negative duration:", ignored_rows, "\n")
+```
+
+Only three rows hold, we don't delete rows missing distance because they are due to missing end coordinates.
+
+```{r distance > 50km supression}
+original_nrow <- nrow(df)
+df <- subset(df, distance <= 50 | is.na(distance))
+ignored_rows <- original_nrow - nrow(df)
+
+cat("Number of rows ignored, trips with too high distance:", ignored_rows, "\n")
+```
+
+### Reorder columns and delete unused ones
+Modify the order of columns.
+
+```{r Reorder columns}
+df <- df %>%
+  relocate(season, date, month, day, hour, duration, distance, dist_cat, .after = ended_at)
+
+sample(df, all_of(c("season", "date", "month", "day", "hour", "duration", "distance", "dist_cat")), 10)
+```
+
+Delete unused columns to decrease size of manipulated data set. Following columns are deleted: *started_at, ended_at, start_station_name, start_station_id, end_station_name, end_station_id, end_lat, end_lng*
+```{r Delete unused columns}
+original_size <- size(df)
+
+df <- df %>% 
+      select(-c(ride_id, started_at, ended_at, end_station_id, end_station_name, start_station_id))
+
+new_size <- size(df)
+
+cat("Original size before suppression was ", original_size, " Mo, and become ", new_size, " Mo", " after suppression: ")
+```
+
+
+```{r Save processed in CSV, echo=FALSE, warning=FALSE, results='hide', message=FALSE}
+# write_csv(df, "df023_processed.csv", quote = "all")
+```

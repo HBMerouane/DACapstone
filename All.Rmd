@@ -1,0 +1,29 @@
+---
+title: "CYCLISTIC technical report"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 5
+    number_sections: true
+---
+
+
+```{r Prepare section, child='Prepare.Rmd'}
+
+```
+
+
+```{r Process section, child='Process.Rmd'}
+
+```
+
+
+```{r Analyze section, child='Analyze.Rmd'}
+
+```
+
+
+```{r Share section, child='Share.Rmd'}
+
+```

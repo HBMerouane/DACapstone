@@ -1,0 +1,91 @@
+---
+title: "Share insights"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 5
+    number_sections: true
+editor_options: 
+  markdown: 
+    wrap: sentence
+---
+
+# Share insights
+
+## Business objective and audience
+
+Let's remember the three key questions that will guide our team in the upcoming marketing program:
+
+**1. How do annual members and casual riders use CYCLISTIC bikes differently?**
+
+**2. Why would casual riders buy CYCLISTIC annual memberships?**
+
+**3. How can CYCLISTIC use digital media to inuence casual riders to become members?**
+
+This analysis tackles the first question to aid my team in addressing the remaining two.
+Hence, my audience could be marketing team, designers and project manager.
+
+## Main insights
+
+The study revealed a variance in usage patterns between casual and member cyclists across multiple dimensions:
+
+**1.  Global evaluation:**  
+In general, the number of member rides exceeds that of casual rides, which can be attributed to the ease and reduced cost of member usage.
+    This trend has exceptions on 58 days of the year 2023.
+
+**2.  Weather and leisure:**  
+The total number of rides generally increases with good weather (spring and summer) and during weekend days, particularly for casual rides.
+
+**3.  Night circumstances:** Conversely, the total number of rides decreases late at night (between 11 PM and 3 AM), but the proportion of casual rides increases.
+    This can be attributed to the lack of public transportation during these hours, prompting unregistered cyclists to opt for bike rentals.
+
+**4.  Rides losing bikes:**  
+The proportion of casual cyclists increases sharply for rides without an end date, which can be explained by bike loss or theft, likely due to inexperience with using the service.
+
+5.  Electric bikes are slightly favored by casual users, while recumbent bikes are never used.
+
+6.  The most frequented stations by casual cyclists are closer to Lake Michigan, while members tend to use stations near the city center.
+    This pattern can be attributed to the fact that many casual users are tourists.
+
+## Some recommandations
+
+According to insights given above, I recommend following:\
+Based on the observations about the use by casual versus member riders, here are some recommendations:
+
+**1.  Targeted Membership Promotions:**  
+- Implement targeted promotions on the 58 days where casual rides spike, offering discounts or trial memberships to encourage casual riders to become members.  
+- Offer special membership rates or perks for first-time users to convert them into members right after their first ride.  
+
+**2.  Seasonal and Weekend Marketing:**  
+- Develop and market special membership packages for spring and summer, highlighting the benefits of biking in good weather.  
+- Promote weekend passes or discounts to attract more casual riders during these peak times, potentially converting them into members.  
+**3. Night-Time Usage Incentives:**  
+- Introduce night-time ride discounts or safety campaigns to encourage more rides during late hours, addressing the gap in public transportation.  
+- Partner with local businesses or events that operate late to offer promotions that encourage biking to and from these locations.  
+
+**4. Education and Theft Prevention:**  
+- Launch an educational campaign targeting casual riders on how to securely lock bikes and the benefits of membership, including any theft-protection services offered.  
+- Explore options for better bike tracking and security features to reduce the incidence of lost or stolen bikes, reassuring potential users.  
+
+**5. Electric Bike Promotion:**  
+- Since electric bikes are favored by casual users, create marketing campaigns highlighting the availability and benefits of electric bikes, possibly including tutorials or guided tours that showcase their ease of use.  
+- Offer membership benefits that specifically cater to electric bike users, such as guaranteed availability or extended battery life.  
+
+**6. Geographically Targeted Strategies:**  
+- For casual riders frequenting stations near Lake Michigan, develop tourist-friendly packages or partnerships with local tourist attractions to offer combined passes or discounts.  
+- Enhance the visibility and accessibility of bike stations in tourist-heavy areas with additional signage, maps, and digital app features aimed at tourists.  
+- Conduct targeted advertising in city center areas to attract members with promotions highlighting the convenience of bike usage for daily commutes or city exploration.  
+
+**7. Diversify Bike Options:**  
+- Considering the lack of use of recumbent bikes, evaluate the fleet and consider reallocating resources towards more popular bike types among both casual and member riders.  
+- Solicit feedback from users on bike preferences and potential improvements to ensure the service meets the needs of a diverse user base.  
+
+## Further studies: 
+I suggest the following avenues for exploring new questions that have emerged and to push the analysis further:
+
+- The reference document refers to 600 stations, yet the data contains over 1500 unique values for station names and IDs. Given the inability to acquire additional data, I recommend conducting an analysis to identify the 600 stations mentioned.
+
+- It's feasible to obtain the geographical coordinates of major public facilities in Chicago, including transportation hubs, shopping centers, and tourist landmarks. Subsequently, one could analyze their correlation with the types of riders. 
+
+- Other dimensions could be considered, for example the rides speed which could be obtained from distance and duration.

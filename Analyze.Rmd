@@ -1,0 +1,380 @@
+---
+title: "Data Analysis"
+output:
+  html_document:
+    code_folding: hide
+    toc: true
+    toc_depth: 5
+    number_sections: true
+---
+
+# Data analysis
+Now the data is reliable, original, current, and cited which makes it easier to analyze. We do it across various features to uncover insights regarding the differences between casual and member bikers.
+
+## Time analysis
+Time analysis will be conducted across different periods, including daytime, weekdays, months, and seasons.
+
+### Annual ratio of casual bikers
+What are ratios of bikers types?
+
+```{r Annual ratio, fig.width=12, fig.height=6}
+# Number of all trips
+total_trips <- nrow(df)
+
+# Number of all trips with member_casual = 'casual'
+casual_trips <- sum(df$member_casual == 'casual')
+
+# Percentage of trips that are casual
+percentage_casual <- (casual_trips / total_trips) * 100
+
+# Display the results
+cat("Number of all trips:", total_trips, "\n", "Number of trips with casual bikers:", casual_trips, "\n", "with percentage :", round(percentage_casual), "% of all bikers. \n")
+# cat("Number of trips with member_casual = 'casual':", casual_trips, "\n")
+# cat("Percentage of trips that are casual:", percentage_casual, "%\n")
+```
+
+### Variation over the year
+Variation in the ratios of biker types throughout the year.
+
+```{r fig.width=12, fig.height=6}
+# Calculate counts by user type for each day
+df_summary <- df %>%
+  group_by(date, member_casual) %>%
+  summarize(count = n(), .groups = 'drop') %>%
+  group_by(date)
+
+ggplot(df_summary, aes(x = date, y = count, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  theme_minimal() +
+  labs(title = "Casual vs Member over 2023",
+       x = "Date",
+       y = "Trips Count",
+       fill = "User Type")
+```
+Most of the days, the number member riders is greater than casual riders. 
+
+```{r casual highest, fig.width=12, fig.height=6}
+df_summary <- df %>%
+  group_by(date, member_casual) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(date) %>%
+  mutate(total = sum(count), 
+         ratio = count / total * 100) %>%
+  filter((member_casual == "casual" & ratio >= 50) | (member_casual == "member" & ratio < 50))
+
+cat("Number of days over 2023 where most of bikers are casual: ", nrow(df_summary))
+```
+Number of casual bikers trips is greater than member bikers trips over 58 days of 2023. Almost all were on week ends.
+
+### Variation over months
+In which months are casual users more prevalent?
+
+```{r fig.width=12, fig.height=6}
+# Calculate counts and percentages by user type and month
+df_summary <- df %>%
+  group_by(month, member_casual) %>%
+  summarize(count = n(), .groups = 'drop') %>%
+  group_by(month) %>%
+  mutate(total = sum(count),
+         percentage = count / total * 100)
+
+ggplot(df_summary, aes(x = month, y = count, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.25, # Adjust based on your plot's needs
+            hjust=0.5) + # Center the text in the dodge position
+  theme_minimal() +
+  labs(title = "Count of Casual vs Member by Month",
+       x = "Month",
+       y = "Trips Count",
+       fill = "User Type")
+```
+
+### Variation over seasons
+Which season is most favorable for casual biking?
+
+```{r fig.width=12, fig.height=6}
+# Calculate the percentage of trips in each category
+df_summary <- df %>%
+  group_by(season, member_casual) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(season) %>%
+  mutate(total = sum(count), 
+        ratio = count / total * 100,
+        legend_text = paste(member_casual, "-", paste0(round(ratio, 1), "%")))
+
+# Create a list to store ggplot objects
+plot_list <- list()
+
+# Loop through each unique season to create a pie chart for each
+for(sea in unique(df_summary$season)) {
+  data_filtered <- df_summary %>% 
+    filter(season == sea)
+
+  p <- ggplot(data_filtered, aes(x = "", y = ratio, fill = legend_text)) +
+    geom_bar(width = 1, stat = "identity") +
+    coord_polar("y", start = 0) +
+    labs(fill = "User type", title = sea) +
+    theme_void() +
+    theme(legend.title = element_text(size = 10), legend.text = element_text(size = 8))
+  
+  # Add the plot to the list
+  plot_list[[sea]] <- p
+}
+
+# Combine all plots using patchwork
+plot_combined <- wrap_plots(plot_list, ncol = 2)
+
+# Print the combined plot
+plot_combined
+```
+Certainly, there's a discernible correlation between the number of bike rides and the progression of months and seasons, which can likely be attributed to weather variations. To better understand this relationship, we sourced average temperature data for Chicago throughout the year and illustrated the fluctuations through graphical representation. The temperature data is given by CHATGPT 4.
+
+```{r temperature variation}
+df_temp <- data.frame(
+  month = c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'),
+  Temperature_C = c(-3, -1, 4, 10, 16, 21, 24, 23, 19, 13, 7, 1)
+)
+
+df_trips_per_month <- df %>%
+  group_by(month, member_casual) %>%
+  summarise(Trips_Count = n(), .groups = 'drop')
+
+merged_df <- merge(df_trips_per_month, df_temp, by = "month", all = TRUE)
+merged_df$month <- factor(merged_df$month, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"), ordered = TRUE)
+
+# Create a ggplot chart with dual axistrips count and mean temperature
+ggplot(merged_df, aes(x = month, fill = member_casual)) +
+  geom_bar(aes(y = Trips_Count), position = 'dodge', stat = 'identity') +
+  geom_line(aes(y = Temperature_C * 20000, group = 1), color = "yellow", linewidth = 2) + # Multiplying by a factor for scale
+  geom_text(aes(x = "Jun", y = 5e+05), label = "Average monthly temperature", color = "brown") +
+  scale_y_continuous(sec.axis = sec_axis(~./18856, name = "Temperature (°C)")) + # Adjusting the secondary axis
+  labs(y = "Count of Trips", x = "Month") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + # Improve month labels readability
+  labs(title = "Monthly Trips Count and Average Temperature in Chicago City - 2023", fill = "User Type")
+```
+  
+  
+The correlation between the number of trips, especially those by casual users, and the temperature is evident and logically coherent.
+
+### Variation over week days
+What trends occur across the weekdays?
+
+```{r fig.width=12, fig.height=6}
+# Calculate counts and percentages
+df_summary <- df %>%
+  group_by(day, member_casual) %>%
+  summarize(count = n(), .groups = 'drop') %>%
+  group_by(day) %>%
+  mutate(total = sum(count),
+         percentage = count / total * 100)
+
+ggplot(df_summary, aes(x = day, y = count, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.25,
+            hjust=0.5) +
+  theme_minimal() +
+  labs(title = "Count of Casual vs Member by WeekDay",
+       x = "Day",
+       y = "Trips Count",
+       fill = "User Type")
+```
+
+### Variation over hours of day
+During the day, when does casual biking increase?
+
+```{r fig.width=12, fig.height=6}
+df_summary <- df %>%
+  group_by(hour, member_casual) %>%
+  summarize(count = n(), .groups = 'drop') %>%
+  group_by(hour) %>%
+  mutate(total = sum(count),
+         percentage = count / total * 100)
+
+ggplot(df_summary, aes(x = hour, y = count, fill = member_casual)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  geom_text(aes(label = sprintf("%.1f%%", percentage)), 
+            position = position_dodge(width = 0.9), 
+            vjust = 0.5,
+            hjust= 0,
+            angle = 90) +
+  scale_x_continuous(breaks = 0:23) +
+  labs(title = "Count of Casual vs Member by Hour",
+       x = "Hour",
+       y = "Trips Count",
+       fill = "User Type") +
+  theme_minimal()
+```
+
+Hourly analysis indicates a significant late-night usage of CYCLISTIC's services, with a notably higher percentage of casual users during these hours. This suggests that the service also caters to individuals facing public transportation challenges at night.
+
+## Geographic Analysis
+In this subsection, an analysis is conducted on geographic data.
+
+### Trips distance distribution
+First, we examine the variation in the number of trips across different trip distances.
+
+```{r fig.width=12, fig.height=6, warning=FALSE, message=FALSE}
+ggplot(df, aes(x = distance)) +
+  geom_histogram(binwidth = 1,
+                 color = "black", fill = "blue") +
+  theme_minimal() +
+  scale_x_continuous(breaks = 0:50) +
+  labs(title = "Frequency of trips by Distance",
+       x = "Distance (km)", 
+       y = "Number of Trips")
+```
+
+### Variation over distance categories
+The above chart guides the definition of distance categories in the preparation section and following analysis.
+
+```{r fig.width=12, fig.height=6, warning=FALSE, message=FALSE}
+df_summary <- df %>%
+  group_by(dist_cat, member_casual) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(dist_cat) %>%
+  mutate(total = sum(count), 
+        ratio = count / total * 100,
+        legend_text = paste(member_casual, "-", paste0(round(ratio, 1), "%")))
+
+# Create a list to store ggplot objects
+plot_list <- list()
+df %>% 
+  filter(is.na(dist_cat)) %>% 
+  select(distance, dist_cat)
+
+# Loop through each unique dist_cat to create a pie chart for each
+for(category in unique(df_summary$dist_cat)) {
+  # Filter the data for the current category
+  data_filtered <- df_summary %>% 
+    filter(dist_cat == category)
+  
+  # Create the pie chart for the current category
+  p <- ggplot(data_filtered, aes(x = "", y = ratio, fill = legend_text)) +
+    geom_bar(width = 1, stat = "identity") +
+    coord_polar("y", start = 0) +
+    labs(fill = category) +
+    theme_void() +
+    theme(legend.title = element_text(size = 20), legend.text = element_text(size = 16))
+  
+  # Add the plot to the list
+  plot_list[[category]] <- p
+}
+
+# Combine all plots using patchwork
+plot_combined <- wrap_plots(plot_list, ncol = 3) # Adjust ncol as needed for layout
+
+# Print the combined plot
+plot_combined
+```
+
+There is 6990 trips are without distance because end coordinates are missing. Most of these trips are casual trips. If we suppose missing end coordinates corresponding to lost bikes, it means that casual bikers lost vehicles more than subscribed members.
+
+### Most used stations over bikers type
+Where are the most frequently used stations for both types of bikers located in Chicago?
+
+```{r fig.width=8, fig.height=6}
+# Calculate the most used stations of casual bikers
+top_casual_stations <- df %>%
+  filter(!is.na(start_station_name), member_casual == 'casual') %>%  # Exclude rows where start_station_name is NA
+  group_by(start_station_name) %>%
+  summarise(
+    count = n(),
+    start_lat = first(start_lat),  # Capture the first latitude value for the group
+    start_lng = first(start_lng),  # Capture the first longitude value for the group
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(count)) %>%
+  slice_head(n = 30)
+
+# Calculate the most used stations of members bikers
+top_member_stations <- df %>%
+  filter(!is.na(start_station_name), member_casual == 'member') %>%  # Exclude rows where start_station_name is NA
+  group_by(start_station_name) %>%
+  summarise(
+    count = n(),
+    start_lat = first(start_lat),  # Capture the first latitude value for the group
+    start_lng = first(start_lng),  # Capture the first longitude value for the group
+    .groups = 'drop'
+  ) %>%
+  arrange(desc(count)) %>%
+  slice_head(n = 30)
+
+# map
+m <- leaflet() %>%
+  addTiles()  # Add default OpenStreetMap map tiles
+
+# Add markers for casual stations in blue
+m <- m %>%
+  addCircleMarkers(data = top_casual_stations, 
+                   lng = ~start_lng, lat = ~start_lat, 
+                   popup = ~paste("<b>", start_station_name, "</b><br>", count, " Trips"), color = "blue", 
+                   group = "Casual Top Stations")
+
+# Add markers for member stations in red
+m <- m %>%
+  addCircleMarkers(data = top_member_stations, 
+                   lng = ~start_lng, lat = ~start_lat, 
+                   popup = ~paste("<b>", start_station_name, "</b><br>", count, " Trips"), color = "red", 
+                   group = "Member Top Stations")
+
+# Adjust the map view to include all markers
+data = bind_rows(top_casual_stations, top_member_stations)
+bounds <- c(min(data$start_lng), min(data$start_lat), max(data$start_lng), max(data$start_lat))
+m <- m %>% fitBounds(lng1 = bounds[1], lat1 = bounds[2], lng2 = bounds[3], lat2 = bounds[4])
+
+# Optionally, add a layer control to toggle the visibility of each group
+m <- m %>%
+  addLayersControl(overlayGroups = c("Casual Top Stations", "Member Top Stations"),
+                   options = layersControlOptions(collapsed = FALSE))
+
+# Print the map
+m
+```
+
+### Bike types
+How are bikers distributed across the three types of bikes?
+
+```{r fig.width=12, fig.height=6}
+# Calculate the percentage of trips in each bike type
+df_summary <- df %>%
+  group_by(rideable_type, member_casual) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  group_by(rideable_type) %>%
+  mutate(total = sum(count), 
+          ratio = count / total * 100,
+          legend_text = paste(member_casual, "-", paste0(round(ratio, 1), "%")))
+
+# Create a list to store ggplot objects
+plot_list <- list()
+# Loop through each unique rideable_type to create a pie chart for each
+for(type in unique(df_summary$rideable_type)) {
+  # Filter the data for the current type
+  data_filtered <- df_summary %>% 
+    filter(rideable_type == type)
+  
+  # Create the pie chart for the current type
+  p <- ggplot(data_filtered, aes(x = "", y = ratio, fill = legend_text)) +
+    geom_bar(width = 1, stat = "identity") +
+    coord_polar("y", start = 0) +
+    labs(fill = type) +
+    theme_void() +
+    theme(legend.title = element_text(size = 20), legend.text = element_text(size = 16))
+  
+  # Add the plot to the list
+  plot_list[[type]] <- p
+}
+
+# Combine all plots using patchwork
+plot_combined <- wrap_plots(plot_list, ncol = 2) # Adjust ncol as needed for layout
+
+# Print the combined plot
+plot_combined
+df
+```
+
+The absence of member usage of docked bikes suggests that the CYCLISTIC system may not permit such use. Also, casual bikers have a slight preference for electric bikes.

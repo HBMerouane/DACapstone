@@ -1,0 +1,23 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggplot2)
+
+# Create a data frame
+df <- data.frame(
+  Month = c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'),
+  Temperature_C = c(-3, -1, 4, 10, 16, 21, 24, 23, 19, 13, 7, 1)
+)
+
+# Plot using ggplot2
+ggplot(df, aes(x=Month, y=Temperature_C)) +
+  geom_line() +
+  geom_point() +
+  theme_minimal() +
+  labs(title="Average Monthly Temperatures in Chicago City - 2023",
+       x="Month", y="Temperature (°C)")
+```
+
