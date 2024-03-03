@@ -5,4 +5,4 @@ In this report, we include the details about different steps of analysis: Ask, P
 
 Access final report in HTML format -> or PDF format ->
 Access code of analysis in R ->
-Download data files ->
+Download data files -> 
